@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import { useMutation } from "@apollo/react-hooks";
 import { Avatar, Button, Menu } from "antd";
 import { LOG_OUT } from "../../../../lib/graphql/mutations";
-import { LogOut as LogOutData } from "../../../../lib/graphql/mutations/LogOut/__generated__/LogOut";
 import { HomeOutlined, UserOutlined, LogoutOutlined } from '@ant-design/icons';
 import { displaySuccessNotification, displayErrorMessage } from "../../../../lib/utils";
+import { LogOut as LogOutData } from "../../../../lib/graphql/mutations/LogOut/__generated__/LogOut";
 import { Viewer } from "../../../../lib/types";
 
 interface Props {
@@ -22,6 +22,8 @@ export const MenuItems = ({ viewer, setViewer }: Props) => {
     onCompleted: data => {
       if (data && data.logOut) {
         setViewer(data.logOut);
+        // 清除随机生成的令牌
+        sessionStorage.removeItem("token");
         displaySuccessNotification("注销成功");
       }
     },

@@ -36,8 +36,9 @@ export const Login = ({ setViewer }: Props) => {
     // onCompleted 是一个回调属性，一旦成功完成变更，该回调属性便会执行
     onCompleted: data => {
       // 判断data和data login存在，更新setViewer函数
-      if (data && data.logIn) {
+      if (data && data.logIn && data.logIn.token) {
         setViewer(data.logIn);
+        sessionStorage.setItem("token", data.logIn.token);
         // data存在正常登录弹窗
         displaySuccessNotification("登录成功");
       }
