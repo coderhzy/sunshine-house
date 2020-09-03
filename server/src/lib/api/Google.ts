@@ -10,7 +10,7 @@ const auth = new google.auth.OAuth2(
 export const Google = {
   // eslint-disable-next-line @typescript-eslint/camelcase
   authUrl: auth.generateAuthUrl({
-    access_type: 'oneline',
+    access_type: 'online',
     scope: [
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile"
