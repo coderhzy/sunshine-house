@@ -1,11 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { render } from "react-dom";
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import ApolloClient from "apollo-boost";
-import { ApolloProvider } from "react-apollo";
+import { ApolloProvider, useMutation } from "@apollo/react-hooks";
 import { AppHeader, Home, Host, Listing, Listings, Login, NotFound, User } from "./sections";
+import { LOG_IN } from "./lib/graphql/mutations";
+import {
+  LogIn as LogInData,
+  LogInVariables
+} from "./lib/graphql/mutations/LogIn/__generated__/LogIn";
 import { Viewer } from "./lib/types";
-import { Layout, Affix } from "antd";
+import { Layout, Affix, Spin } from "antd";
+import { AppHeaderSkeleton, ErrorBanner } from "./lib/components";
 import * as serviceWorker from "./serviceWorker";
 import './styles/index.css';
 
@@ -26,10 +32,45 @@ const initialViewer: Viewer = {
 // 配置路由指向组件
 const App = () => {
   const [viewer, setViewer] = useState<Viewer>(initialViewer);
+
+  // 在父级组件触发登录
+  const [logIn, { error }] = useMutation<LogInData, LogInVariables>(LOG_IN, {
+    onCompleted: data => {
+      if (data && data.logIn) {
+        setViewer(data.logIn);
+      }
+    }
+  });
+
+  const logInRef = useRef(logIn);
+
+  useEffect(() => {
+    logInRef.current();
+  }, []);
+
+  // 父组件请求时好显示加载UI
+  if (!viewer.didRequest && !error) {
+    return (
+      <Layout className="app-skeleton">
+        <AppHeaderSkeleton />
+        <div className="app-skeleton__spin-section">
+          <Spin size="large" tip="Launching Tinyhouse" />
+        </div>
+      </Layout>
+    );
+  }
+
+  //登录过程中发生错误,在页面最上方提示
+  const logInErrorBannerElement = error ? (
+    <ErrorBanner description="我们无法验证您是否已登录。请稍后再试！" />
+  ) : null;
+
+
   //console.log(viewer); // 检查登录信息返回状态
   return (
     <Router>
       <Layout id="app">
+        {logInErrorBannerElement}
         <Affix offsetTop={0} className="app__affix-header">
           <AppHeader viewer={viewer} setViewer={setViewer} />
         </Affix>
