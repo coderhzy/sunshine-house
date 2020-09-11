@@ -1,6 +1,7 @@
 import { IResolvers } from "apollo-server-express";
 import { Request } from "express";
 import { ObjectId } from "mongodb";
+import { Google } from "../../../lib/api";
 import { Database, Listing, User } from "../../../lib/types";
 import { authorize } from "../../../lib/utils";
 import {
@@ -9,8 +10,10 @@ import {
   ListingBookingsData,
   ListingsArgs,
   ListingsData,
-  ListingsFilter
+  ListingsFilter,
+  ListingsQuery
 } from "./types";
+
 
 // 指定ID的返回解析函数
 export const listingResolvers: IResolvers = {
@@ -40,18 +43,43 @@ export const listingResolvers: IResolvers = {
     },
     listings: async (
       _root: undefined,
-      { filter, limit, page }: ListingsArgs,
+      { location, filter, limit, page }: ListingsArgs,
       { db }: { db: Database }
     ): Promise<ListingsData> => {
+
       try {
+        const query: ListingsQuery = {};
         // 初始化ListingsData
         const data: ListingsData = {
+          region: null,
           total: 0,
           result: []
         };
 
+        // geocode
+        if (location) {
+          try {
+            const { country, admin, city } = await Google.geocode(location);
+
+            // 筛选geocode返回值，对其做出不同设置
+            if (city) query.city = city;
+            if (admin) query.admin = admin;
+            if (country) {
+              query.country = country;
+            } else {
+              throw new Error("no country found");
+            }
+            const cityText = city ? `${city}, ` : "";
+            const adminText = admin ? `${admin}, ` : "";
+            data.region = `${cityText}${adminText}${country}`;
+          } catch (e) {
+            // TODO: i have use https instead of http , this is Error , server -> 403
+            console.log(`错误`, e);
+          }
+        }
+
         // 定义游标 分段数据库信息
-        let cursor = await db.listings.find({});
+        let cursor = await db.listings.find(query);
 
         // 升序
         if (filter && filter === ListingsFilter.PRICE_LOW_TO_HIGH) {
