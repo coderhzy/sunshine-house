@@ -13,6 +13,7 @@ import { UserBookings, UserListings, UserProfile } from "./components";
 
 interface Props {
   viewer: Viewer;
+  setViewer: (viewer: Viewer) => void;
 }
 
 interface MatchParams {
@@ -23,11 +24,15 @@ const { Content } = Layout;
 // 限制用户页面中分页项为4
 const PAGE_LIMIT = 4;
 
-export const User = ({ viewer, match }: Props & RouteComponentProps<MatchParams>) => {
+export const User = ({
+  viewer,
+  setViewer,
+  match
+}: Props & RouteComponentProps<MatchParams>) => {
   const [listingsPage, setListingsPage] = useState(1);
   const [bookingsPage, setBookingsPage] = useState(1);
 
-  const { data, loading, error } = useQuery<UserData, UserVariables>(USER, {
+  const { data, loading, error, refetch } = useQuery<UserData, UserVariables>(USER, {
     variables: {
       id: match.params.id,
       bookingsPage,
@@ -35,6 +40,20 @@ export const User = ({ viewer, match }: Props & RouteComponentProps<MatchParams>
       limit: PAGE_LIMIT
     }
   });
+
+  // 刷新界面
+  const handleUserRefetch = async () => {
+    await refetch();
+  }
+
+
+  // 在URL的构造函数中获取stripe_error查询字符串，（React Router不支持在URL路由内访问查询字符串的方法。）
+  const stripeError = new URL(window.location.href).searchParams.get("stripe_error");
+
+  const stripeErrorBanner = stripeError ? (
+    <ErrorBanner description="与Stripe连接时出现问题。 请稍后再试。" />
+  ) : null;
+
 
   // 加载中
   if (loading) {
@@ -64,7 +83,13 @@ export const User = ({ viewer, match }: Props & RouteComponentProps<MatchParams>
   const userListings = user ? user.listings : null;
   const userBookings = user ? user.bookings : null;
 
-  const userProfileElement = user ? <UserProfile user={user} viewerIsUser={viewerIsUser} /> : null;
+  const userProfileElement = user ? <UserProfile
+    user={user}
+    viewer={viewer}
+    viewerIsUser={viewerIsUser}
+    setViewer={setViewer}
+    handleUserRefetch={handleUserRefetch}
+  /> : null;
 
   // 根据用户存在的有无，创建组件
   const userListingsElement = userListings ? (
@@ -87,6 +112,7 @@ export const User = ({ viewer, match }: Props & RouteComponentProps<MatchParams>
 
   return (
     <Content className="user">
+      {stripeErrorBanner}
       <Row gutter={12} justify="space-between">
         <Col xs={24}>{userProfileElement}</Col>
         <Col xs={24}>
