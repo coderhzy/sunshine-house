@@ -1,7 +1,7 @@
 import React, { useState,useRef, useEffect } from "react";
 import { Link, RouteComponentProps } from "react-router-dom";
 import { useQuery } from "@apollo/react-hooks";
-import { Affix, Layout, List, Typography } from "antd";
+import { Layout, List, Typography } from "antd";
 import { ErrorBanner, ListingCard } from "../../lib/components";
 import { LISTINGS } from "../../lib/graphql/queries";
 import {
@@ -66,7 +66,6 @@ export const Listings = ({ match }: RouteComponentProps<MatchParams>) => {
   const listingsSectionElement =
     listings && listings.result.length ? (
       <div>
-        <Affix offsetTop={64}>
           <ListingsPagination
             total={listings.total}
             page={page}
@@ -74,7 +73,6 @@ export const Listings = ({ match }: RouteComponentProps<MatchParams>) => {
             setPage={setPage}
           />
           <ListingsFilters filter={filter} setFilter={setFilter} />
-        </Affix>
         <List
           grid={{
             gutter: 8,
