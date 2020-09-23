@@ -2,7 +2,7 @@ import { IResolvers } from "apollo-server-express";
 import { Request } from "express";
 import { ObjectId } from "mongodb";
 import { Google } from "../../../lib/api";
-import { Database, Listing, User } from "../../../lib/types";
+import { Database, Listing, User, ListingType } from "../../../lib/types";
 import { authorize } from "../../../lib/utils";
 import {
   ListingArgs,
@@ -11,9 +11,34 @@ import {
   ListingsArgs,
   ListingsData,
   ListingsFilter,
-  ListingsQuery
+  ListingsQuery,
+  HostListingInput,
+  HostListingArgs
 } from "./types";
 
+/**
+ * @verifyHostListingInput
+ * 检查并限制用户的输入
+ */
+const verifyHostListingInput = ({
+  title,
+  description,
+  type,
+  price
+}: HostListingInput) => {
+  if (title.length > 100) {
+    throw new Error("列表标题必须少于100个字符");
+  }
+  if (description.length > 5000) {
+    throw new Error("列表说明必须少于5000个字符");
+  }
+  if (type !== ListingType.Apartment && type !== ListingType.House) {
+    throw new Error("列表类型必须是公寓或房屋");
+  }
+  if (price < 0) {
+    throw new Error("价格必须大于0");
+  }
+};
 
 // 指定ID的返回解析函数
 export const listingResolvers: IResolvers = {
@@ -107,6 +132,49 @@ export const listingResolvers: IResolvers = {
         throw new Error(`请求到用户的列表失败： ${error}`)
       }
     }
+  },
+  Mutation: {
+    hostListing: async (
+      _root: undefined,
+      { input }: HostListingArgs,
+      { db, req }: { db: Database; req: Request }
+    ): Promise<Listing> => {
+      verifyHostListingInput(input);
+
+      let viewer = await authorize(db, req);
+      // 用于未登录
+      if (!viewer) {
+        throw new Error("viewer cannot be found");
+      }
+
+      // 用户登录
+      const { country, admin, city } = await Google.geocode(input.address);
+      if (!country || !admin || !city) {
+        throw new Error("invalid address input");
+      }
+
+      const insertResult = await db.listings.insertOne({
+        _id: new ObjectId(),
+        ...input,
+        bookings: [],
+        bookingsIndex: {},
+        country,
+        admin,
+        city,
+        host: viewer._id
+      });
+
+      // 通过插入insertResult数组的第一项，来访问
+      const insertedListing: Listing = insertResult.ops[0];
+
+      // 使用id来更新文档
+      await db.users.updateOne(
+        { _id: viewer._id },
+        { $push: { listings: insertedListing._id } }
+      );
+
+      return insertedListing;
+    },
   },
   Listing: {
     id: (listing: Listing): string => {

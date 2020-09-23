@@ -1,6 +1,7 @@
 import { gql } from "apollo-server-express";
 
 export const typeDefs = gql`
+  # 每一个订单信息
   type Booking {
     id: ID!
     listing: Listing!
@@ -8,7 +9,7 @@ export const typeDefs = gql`
     checkIn: String!
     checkOut: String!
   }
-
+  # 用于分页的订单数据
   type Bookings {
     total: Int!
     result: [Booking!]!
@@ -24,6 +25,7 @@ export const typeDefs = gql`
     PRICE_HIGH_TO_LOW
   }
 
+# 每一个房子信息
   type Listing {
     id: ID!
     title: String!
@@ -40,13 +42,14 @@ export const typeDefs = gql`
     price: Int!
     numOfGuests: Int!
   }
-
+  # 用于分页的房子数据
   type Listings {
     region: String
     total: Int!
     result: [Listing!]!
   }
 
+  # 用户信息
   type User {
     id: ID!
     name: String!
@@ -58,6 +61,8 @@ export const typeDefs = gql`
     listings(limit: Int!, page: Int!): Listings!
   }
 
+  # 这里的Boolean! 是什么意思？
+  # didRequest 字段标识请求已经被处理
   type Viewer {
     id: ID
     token: String
@@ -74,6 +79,17 @@ export const typeDefs = gql`
     code: String!
   }
 
+  input HostListingInput {
+    title: String!
+    description: String!
+    image: String!
+    type: ListingType!
+    address: String!
+    price: Int!
+    numOfGuests: Int!
+  }
+  
+  # 用于登录resolvers的输入
   type Query {
     authUrl: String!
     user(id: ID!): User!
@@ -85,11 +101,14 @@ export const typeDefs = gql`
       page: Int!
     ): Listings!
   }
-
+  # 登录登出功能返回值都是一个用户实体
+  # 如果一个操作是有"副作用的" 例如登录需要将信息写入数据库，那么铁定是一个Mutation，或者
+  # 可以理解为mutation 不是幂等的请求
   type Mutation {
     logIn(input: LogInInput): Viewer!
     logOut: Viewer!
     connectStripe(input: ConnectStripeInput!): Viewer!
     disconnectStripe: Viewer!
+    hostListing(input: HostListingInput!): Listing!
   }
 `;

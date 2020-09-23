@@ -112,6 +112,7 @@ export const User = ({
 
   return (
     <Content className="user">
+      {stripeErrorBanner}
       <Row gutter={12} type="flex" justify="space-between">
         <Col xs={24}>{userProfileElement}</Col>
         <Col xs={24} >

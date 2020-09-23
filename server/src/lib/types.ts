@@ -8,6 +8,12 @@ export interface Viewer {
   didRequest: boolean;
 }
 
+/**
+ * 约束房子类型，是别墅还是民宅...
+ *
+ * @export
+ * @enum {number}
+ */
 export enum ListingType {
   Apartment = "APARTMENT",
   House = "HOUSE"
@@ -21,6 +27,12 @@ export interface BookingsIndexYear {
   [key: string]: BookingsIndexMonth;
 }
 
+/**
+ * 对每个订单进行约束
+ *
+ * @export
+ * @interface Booking
+ */
 export interface Booking {
   _id: ObjectId;
   listing: ObjectId;
@@ -29,6 +41,12 @@ export interface Booking {
   checkOut: string;
 }
 
+/**
+ * 对每个房子进行类型约束
+ *
+ * @export
+ * @interface Listing
+ */
 export interface Listing {
   _id: ObjectId;
   title: string;
@@ -47,6 +65,16 @@ export interface Listing {
   authorized?: boolean;
 }
 
+/**
+ * 对用户数据进行类型约束
+ * 
+ * @exports
+ * @interface User
+ * 
+ * bookings： 一个用户可以有多个预定民宿
+ *
+ * listings： 一个用户可以拥有多个民宿进行出售
+ */
 export interface User {
   _id: string;
   token: string;
@@ -65,3 +93,4 @@ export interface Database {
   listings: Collection<Listing>;
   users: Collection<User>;
 }
+
