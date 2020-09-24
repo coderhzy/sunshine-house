@@ -1,7 +1,7 @@
 import { IResolvers } from "apollo-server-express";
 import { Request } from "express";
 import { ObjectId } from "mongodb";
-import { Google } from "../../../lib/api";
+import { Cloudinary, Google } from "../../../lib/api";
 import { Database, Listing, User, ListingType } from "../../../lib/types";
 import { authorize } from "../../../lib/utils";
 import {
@@ -155,9 +155,13 @@ export const listingResolvers: IResolvers = {
 
       //  3. 向数据库存储内容
       console.log(`开始向数据库写入房子信息`)
+
+      const imageUrl = await Cloudinary.upload(input.image);
+
       const insertResult = await db.listings.insertOne({
         _id: new ObjectId(),
         ...input,
+        image: imageUrl,
         bookings: [],
         bookingsIndex: {},
         country: 'mock',
