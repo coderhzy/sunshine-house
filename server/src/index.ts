@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+import bodyParser from "body-parser";
 import express, { Application } from 'express';
 import cookieParser from "cookie-parser";
 import { ApolloServer } from 'apollo-server-express';
@@ -10,7 +11,10 @@ import { typeDefs, resolvers } from './graphql';
 const mount = async (app: Application) => {
   const db = await connectDatabase();
 
+  // 增加http请求容量
+  app.use(bodyParser.json({ limit: "2mb" }));
   app.use(cookieParser(process.env.SECRET));
+
   const server = new ApolloServer({
     typeDefs,
     resolvers,

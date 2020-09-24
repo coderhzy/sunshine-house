@@ -1,10 +1,5 @@
 import { Booking, Listing, ListingType } from "../../../lib/types";
 
-export enum ListingsFilter {
-  PRICE_LOW_TO_HIGH = "PRICE_LOW_TO_HIGH",
-  PRICE_HIGH_TO_LOW = "PRICE_HIGH_TO_LOW"
-}
-
 export interface ListingArgs {
   id: string;
 }
@@ -17,6 +12,11 @@ export interface ListingBookingsArgs {
 export interface ListingBookingsData {
   total: number;
   result: Booking[];
+}
+
+export enum ListingsFilter {
+  PRICE_LOW_TO_HIGH = "PRICE_LOW_TO_HIGH",
+  PRICE_HIGH_TO_LOW = "PRICE_HIGH_TO_LOW"
 }
 
 export interface ListingsArgs {
@@ -38,12 +38,6 @@ export interface ListingsQuery {
   city?: string;
 }
 
-
-/**
- * @exports
- * @interface HostListingInput
- * 注册的输入类型
- */
 export interface HostListingInput {
   title: string;
   description: string;

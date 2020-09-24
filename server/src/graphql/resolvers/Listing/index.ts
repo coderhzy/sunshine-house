@@ -139,42 +139,44 @@ export const listingResolvers: IResolvers = {
       { input }: HostListingArgs,
       { db, req }: { db: Database; req: Request }
     ): Promise<Listing> => {
+      //  1. 对前端传递过来的form数据进行校验
       verifyHostListingInput(input);
 
       let viewer = await authorize(db, req);
-      // 用于未登录
+      // 如果用户不存在直接抛出异常
       if (!viewer) {
         throw new Error("viewer cannot be found");
       }
 
-      // 用户登录
-      const { country, admin, city } = await Google.geocode(input.address);
-      if (!country || !admin || !city) {
-        throw new Error("invalid address input");
-      }
+      // const { country, admin, city } = await Google.geocode(input.address);
+      // if (!country || !admin || !city) {
+      //   throw new Error("invalid address input");
+      // }
 
+      //  3. 向数据库存储内容
+      console.log(`开始向数据库写入房子信息`)
       const insertResult = await db.listings.insertOne({
         _id: new ObjectId(),
         ...input,
         bookings: [],
         bookingsIndex: {},
-        country,
-        admin,
-        city,
+        country: 'mock',
+        admin: 'mock',
+        city: 'mock',
         host: viewer._id
       });
 
-      // 通过插入insertResult数组的第一项，来访问
+      // 4. 向数据库中对应的用户信息中插入房子内容
       const insertedListing: Listing = insertResult.ops[0];
 
-      // 使用id来更新文档
       await db.users.updateOne(
         { _id: viewer._id },
         { $push: { listings: insertedListing._id } }
       );
 
+      // 5. 将处理完毕的房子信息返回
       return insertedListing;
-    },
+    }
   },
   Listing: {
     id: (listing: Listing): string => {

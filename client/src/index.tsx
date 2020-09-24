@@ -3,7 +3,16 @@ import { render } from "react-dom";
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import ApolloClient from "apollo-boost";
 import { ApolloProvider, useMutation } from "@apollo/react-hooks";
-import { AppHeader, Home, Host, Listing, Stripe, Listings, Login, NotFound, User } from "./sections";
+import {
+  AppHeader,
+  Home,
+  WrappedHost as Host,
+  Listing,
+  Stripe, Listings,
+  Login,
+  NotFound,
+  User
+} from "./sections";
 import { LOG_IN } from "./lib/graphql/mutations";
 import {
   LogIn as LogInData,

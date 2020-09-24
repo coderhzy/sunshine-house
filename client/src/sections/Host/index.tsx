@@ -1,116 +1,258 @@
-import React, { useState } from "react";
-import { Button, Upload, Form, Icon, Input, InputNumber, Layout, Radio, Typography } from "antd";
-import { Viewer } from "../../lib/types";
-import { Link } from "react-router-dom";
+import React, { useState, FormEvent } from "react";
+import { Link, Redirect } from "react-router-dom";
+import { Button, Form, Icon, Input, InputNumber, Layout, Radio, Typography, Upload } from "antd";
 import { UploadChangeParam } from "antd/lib/upload";
+import { FormComponentProps } from "antd/lib/form";
+import { iconColor, displayErrorMessage, displaySuccessNotification } from "../../lib/utils";
+import { Viewer } from "../../lib/types";
 import { ListingType } from "../../lib/graphql/globalTypes";
-import { iconColor, displayErrorMessage } from "../../lib/utils";
 
-interface Props {
-  viewer: Viewer;
-}
+import { useMutation } from "@apollo/react-hooks";
+import { HOST_LISTING } from "../../lib/graphql/mutations";
+import {
+  HostListing as HostListingData,
+  HostListingVariables
+} from "../../lib/graphql/mutations/HostListing/__generated__/HostListing";
 
 const { Content } = Layout;
 const { Text, Title } = Typography;
 const { Item } = Form;
 
-export const Host = ({ viewer }: Props) => {
-  // 加载图片上传时
+interface Props {
+  viewer: Viewer;
+}
+
+const beforeImageUpload = (file: File) => {
+  //1. 对图片格式进行校验
+  const fileIsValidImage = file.type === "image/jpeg" || file.type === "image/png";
+  //2. 对图片大小进行校验
+  const fileIsValidSize = file.size / 1024 / 1024 < 1;
+  if (!fileIsValidImage) {
+    displayErrorMessage("请检查图片格式，只支持PNG/JPG！");
+    return false;
+  }
+  if (!fileIsValidSize) {
+    displayErrorMessage(
+      "图片大小超过1MB，请处理后再次上传！"
+    );
+    return false;
+  }
+  return fileIsValidImage && fileIsValidSize;
+};
+const getBase64Value = (
+  img: File | Blob,
+  callback: (imageBase64Value: string) => void
+) => {
+  const reader = new FileReader();
+  reader.readAsDataURL(img);
+  reader.onload = () => {
+    // 确定一定是字符串格式
+    callback(reader.result as string);
+  };
+}
+const Host = ({ viewer, form }: Props & FormComponentProps) => {
+
+  const [hostListing, { loading, data }] = useMutation<HostListingData,
+    HostListingVariables>(HOST_LISTING, {
+      onCompleted: () => {
+        displaySuccessNotification("房子发布成功啦！正在帮你载入创建的豪宅信息中！");
+      },
+      onError: (e) => {
+        console.log(e)
+        displayErrorMessage(
+          "创建失败！请稍后再试！"
+        );
+      }
+    });
+
+
   const [imageLoading, setImageLoading] = useState(false);
   const [imageBase64Value, setImageBase64Value] = useState<string | null>(null);
-
+  const { getFieldDecorator } = form;
   const handleImageUpload = (info: UploadChangeParam) => {
     const { file } = info;
-
     if (file.status === "uploading") {
       setImageLoading(true);
       return;
     }
-
     if (file.status === "done" && file.originFileObj) {
       getBase64Value(file.originFileObj, imageBase64Value => {
         setImageBase64Value(imageBase64Value);
         setImageLoading(false);
       });
     }
-
   };
+  const handleHostListing = async (evt: FormEvent) => {
+    // 阻止默认行为，否则直接就提交表单了
+    evt.preventDefault();
+
+    form.validateFields((err, values) => {
+      if (err) {
+        displayErrorMessage("请检查您填写的表单数据");
+        return;
+      }
+      console.log(values)
+      const fullAddress = `${values.address}, ${values.city}, ${values.state}, ${values.postalCode}`;
+      const input = {
+        ...values,
+        address: fullAddress,
+        image: imageBase64Value,
+        price: values.price * 100
+      };
+      delete input.city;
+      delete input.state;
+      delete input.postalCode;
+      hostListing({
+        variables: {
+          input
+        }
+      });
+    });
+  };
+  if (loading) {
+    return (
+      <Content className="host-content">
+        <div className="host__form-header">
+          <Title level={3} className="host__form-title">
+            请等候
+          </Title>
+          <Text type="secondary">正在创建您的提交哈！稍等！</Text>
+        </div>
+      </Content>
+    );
+  }
+  if (data && data.hostListing) {
+    return <Redirect to={`/listing/${data.hostListing.id}`} />;
+  }
 
   if (!viewer.id || !viewer.hasWallet) {
     return (
       <Content className="host-content">
         <div className="host__form-header">
           <Title level={4} className="host__form-title">
-            您必须登录并与Stripe连接才能托管列表！
+            抱歉，您必须登录google和Stripe账号
           </Title>
           <Text type="secondary">
-            我们仅允许已登录我们的应用程序并已连接的用户
-             与Stripe托管新列表。 您可以在登录{" "}
-            <Link to="/login">/login</Link> 页面并在不久后与Stripe连接。
+            我们只允许登录google账号同时授权了Stripe的用户发布租赁信息
+            <Link to="/login">/login</Link> 在这里您可以进行登录操作
           </Text>
         </div>
       </Content>
     );
   }
-
   return (
     <Content className="host-content">
-      <Form layout="vertical">
+      <Form layout="vertical" onSubmit={handleHostListing}>
         <div className="host__form-header">
           <Title level={3} className="host__form-title">
-            嗨！ 让我们开始列出您的位置。
-        </Title>
+            Hi 在这里填写你要发布的信息
+          </Title>
           <Text type="secondary">
-            通过这种形式，我们将收集有关您的一些基本信息和其他信息
-            清单。
-        </Text>
+            在这个表格中，我们需要收集一些关于你想出租房的一些内容
+          </Text>
         </div>
-
-        <Item label="房屋方式">
-          <Radio.Group>
-            <Radio.Button value={ListingType.APARTMENT}>
-              <Icon type="bank" style={{ color: iconColor }} /> <span>公寓</span>
-            </Radio.Button>
-            <Radio.Button value={ListingType.HOUSE}>
-              <Icon type="home" style={{ color: iconColor }} /> <span>房屋</span>
-            </Radio.Button>
-          </Radio.Group>
+        {/*房子类型*/}
+        <Item label="选择您豪宅的类型">
+          {getFieldDecorator("type", {
+            rules: [
+              {
+                required: true,
+                message: "请为您的豪宅选一个类型"
+              }
+            ]
+          })(
+            <Radio.Group>
+              <Radio.Button value={ListingType.APARTMENT}>
+                <Icon type="bank" style={{ color: iconColor }} /> <span>公寓</span>
+              </Radio.Button>
+              <Radio.Button value={ListingType.HOUSE}>
+                <Icon type="home" style={{ color: iconColor }} /> <span>民宿</span>
+              </Radio.Button>
+            </Radio.Group>
+          )}
+        </Item>
+        {/*豪宅名称*/}
+        <Item label="Title" extra="最长不超过45个字符">
+          {getFieldDecorator("title", {
+            rules: [
+              {
+                required: true,
+                message: "输入您豪宅的名称！"
+              }
+            ]
+          })(<Input maxLength={45} placeholder="！" />)}
+        </Item>
+        {/*豪宅描述*/}
+        <Item label="描述您的房子" extra="最长不能超过400个字符">
+          {getFieldDecorator("description", {
+            rules: [
+              {
+                required: true,
+                message: "请对您的豪宅进行描述！"
+              }
+            ]
+          })(
+            <Input.TextArea
+              rows={3}
+              maxLength={400}
+              placeholder="现代的、干净的、温暖的 ... 位于... 的某一座豪宅"
+            />
+          )}
+        </Item>
+        {/*街道*/}
+        <Item label="区/街道/门牌号">
+          {getFieldDecorator("address", {
+            rules: [
+              {
+                required: true,
+                message: "Please enter an address for your listing!"
+              }
+            ]
+          })(<Input placeholder="小店区/许坦东街/8652豪宅" />)}
+        </Item>
+        <Item label="城市">
+          {getFieldDecorator("city", {
+            rules: [
+              {
+                required: true,
+                message: "请填写您的城市信息"
+              }
+            ]
+          })(<Input placeholder="太原" />)}
         </Item>
 
-        <Item label="标题" extra="最大字符数为45">
-          <Input maxLength={45} placeholder="标志性建筑" />
+        <Item label="省份">
+          {getFieldDecorator("state", {
+            rules: [
+              {
+                required: true,
+                message: "请填写您的省份信息"
+              }
+            ]
+          })(<Input placeholder="山西省" />)}
         </Item>
-
-        <Item label="描述" extra="最多400个字">
-          <Input.TextArea
-            rows={3}
-            maxLength={400}
-            placeholder="干净，整洁，舒适"
-          />
+        {/*邮编信息*/}
+        <Item label="邮编">
+          {getFieldDecorator("postalCode", {
+            rules: [
+              {
+                required: true,
+                message: "请输入您的邮编"
+              }
+            ]
+          })(<Input placeholder="在这里输入您的豪宅邮编" />)}
         </Item>
-
-        <Item label="地址">
-          <Input placeholder="田东西路18号" />
-        </Item>
-
-        <Item label="城市、乡镇">
-          <Input placeholder="成都" />
-        </Item>
-
-        <Item label="州/省">
-          <Input placeholder="四川" />
-        </Item>
-
-        <Item label="邮编/邮政编码">
-          <Input placeholder="请输入邮政编码" />
-        </Item>
-
-        <Item
-          label="图像"
-          extra="图片的大小必须小于1MB，且格式为JPG或PNG"
-        >
+        {/*上传组件*/}
+        <Item label="Image" extra="图片不能超过 1MB 并且只能是 JPG/PNG格式">
           <div className="host__form-image-upload">
-            <Upload
+            {getFieldDecorator("image", {
+              rules: [
+                {
+                  required: true,
+                  message: "Please enter provide an image for your listing!"
+                }
+              ]
+            })(<Upload
               name="image"
               listType="picture-card"
               showUploadList={false}
@@ -126,49 +268,42 @@ export const Host = ({ viewer }: Props) => {
                     <div className="ant-upload-text">Upload</div>
                   </div>
                 )}
-            </Upload>
+            </Upload>)}
           </div>
         </Item>
-        <Item label="Price" extra="所有价格以美元/天为单位">
-          <InputNumber min={0} placeholder="200" />
+        <Item label="价钱" extra="统一按天处理">
+          {getFieldDecorator("price", {
+            rules: [
+              {
+                required: true,
+                message: "Please enter a price for your listing!"
+              }
+            ]
+          })(<InputNumber min={0} placeholder="120" />)}
         </Item>
-
+        {/*豪宅接受的人数*/}
+        <Item label="最大入住旅客">
+          {getFieldDecorator("numOfGuests", {
+            rules: [
+              {
+                required: true,
+                message: "Please enter the max number of guests!"
+              }
+            ]
+          })(<InputNumber min={1} placeholder="4" />)}
+        </Item>
         <Item>
-          <Button type="primary">提交</Button>
+          <Button type="primary" htmlType="submit">
+            Submit
+          </Button>
         </Item>
       </Form>
-    </Content >
+    </Content>
   );
 };
 
-const beforeImageUpload = (file: File) => {
-  const fileIsValidImage = file.type === "image/jpeg" || file.type === "image/png";
-  const fileIsValidSize = file.size / 1024 / 1024 < 1;
-
-  // 检查图片
-  if (!fileIsValidImage) {
-    displayErrorMessage("您只能上传有效的JPG或PNG文件！");
-    return false;
-  }
-
-  // 检查大小
-  if (!fileIsValidSize) {
-    displayErrorMessage(
-      "您只能上传小于1MB的有效图像文件！"
-    );
-    return false;
-  }
-
-  return fileIsValidImage && fileIsValidSize;
-};
-
-const getBase64Value = (
-  img: File | Blob,
-  callback: (imageBase64Value: string) => void
-) => {
-  const reader = new FileReader();
-  reader.readAsDataURL(img);
-  reader.onload = () => {
-    callback(reader.result as string);
-  };
-};
+// antD from 表单的高阶组件
+export const WrappedHost = Form.create
+  <Props & FormComponentProps>({
+    name: "host_form"
+  })(Host);
