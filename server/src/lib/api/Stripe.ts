@@ -13,4 +13,19 @@ export const Stripe = {
     });
     return response;
   },
+  charge: async(amount:number , source: string , stripeAccount: string) => {
+     /* eslint-disable @typescript-eslint/camelcase */
+    const res = await client.charges.create({
+      amount,
+      currency: 'usd',
+      source,
+      application_fee_amount: Math.round(amount * 0.05),
+    },{
+      stripe_account: stripeAccount
+    });
+    /* eslint-disable @typescript-eslint/camelcase */
+    if(res.status) {
+      throw new Error('从Stripe创建账单失败')
+    }
+  }
 };

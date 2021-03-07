@@ -27,6 +27,10 @@ export interface BookingsIndexYear {
   [key: string]: BookingsIndexMonth;
 }
 
+export interface BookingsIndex {
+  [key: string]: BookingsIndexYear;
+}
+
 /**
  * 对每个订单进行约束
  *
@@ -59,7 +63,7 @@ export interface Listing {
   admin: string;
   city: string;
   bookings: ObjectId[];
-  bookingsIndex: BookingsIndexYear;
+  bookingsIndex: BookingsIndex;
   price: number;
   numOfGuests: number;
   authorized?: boolean;
