@@ -303,7 +303,6 @@ const Host = ({ viewer, form }: Props & FormComponentProps) => {
 };
 
 // antD from 表单的高阶组件
-export const WrappedHost = Form.create
-  <Props & FormComponentProps>({
+export const WrappedHost = Form.create<Props & FormComponentProps>({
     name: "host_form"
   })(Host);

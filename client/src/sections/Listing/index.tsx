@@ -1,103 +1,119 @@
-import React, { useState } from "react";
-import { RouteComponentProps } from "react-router-dom";
-import { Moment } from "moment";
-import { useQuery } from "@apollo/react-hooks";
-import { ErrorBanner, PageSkeleton } from "../../lib/components";
-import { Col, Layout, Row } from "antd";
-import { LISTING } from "../../lib/graphql/queries";
+import React, {useState} from "react";
+import {RouteComponentProps} from 'react-router-dom'
+import {
+  ListingBookings,
+  ListingDetails,
+  ListingCreateBooking,
+  WrappedListingCreateBookingModal as ListingCreateBookingModal,
+} from "./components";
+import {Col, Layout, Row} from "antd";
+import {useQuery} from "@apollo/react-hooks";
+import {LISTING} from "../../lib/graphql/queries";
 import {
   Listing as ListingData,
   ListingVariables
 } from "../../lib/graphql/queries/Listing/__generated__/Listing";
-import { ListingCreateBooking, ListingBookings, ListingDetails } from "./components";
+import {ErrorBanner, PageSkeleton} from "../../lib/components";
+import {Moment} from "moment";
+import {Viewer} from "../../lib/types";
+
+const {Content} = Layout;
 
 interface MatchParams {
-  id: string;
+  id: string
 }
 
-const { Content } = Layout;
 const PAGE_LIMIT = 3;
 
-export const Listing = ({ match }: RouteComponentProps<MatchParams>) => {
-  const [bookingsPage, setBookingsPage] = useState(1);
+/**
+ * 
+ */
+interface Props {
+  viewer: Viewer
+}
+/**
+ * todo：
+ * 
+ * - 拉取数据进行展示内容
+ * 
+ * - 日期选择校验
+ * 
+ */
+export const Listing = ({match, viewer}: Props & RouteComponentProps<MatchParams>) => {
   const [checkInDate, setCheckInDate] = useState<Moment | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Moment | null>(null);
-
-  //  发起GraphQL查询
-  const { loading, data, error } = useQuery<ListingData, ListingVariables>(LISTING, {
+  const [bookingsPage, setBookingsPage] = useState(1);
+  const [modalVisible, setModalVisible] = useState(false);
+//  发起GraphQL查询当前房间信息
+  const {data, error, loading,refetch} = useQuery<ListingData, ListingVariables>(LISTING, {
     variables: {
       id: match.params.id,
       bookingsPage,
       limit: PAGE_LIMIT
     }
   });
-
-
   if (loading) {
     return (
       <Content className="listings">
-        <PageSkeleton />
+        <PageSkeleton/>
       </Content>
     );
   }
-
   if (error) {
     return (
-      <Content className="listings">
-        <ErrorBanner description="此列表可能不存在，或者我们遇到了错误,请稍后再试!" />
-        <PageSkeleton />
+      <Content className="listing">
+        <ErrorBanner description="This listing may not exist or we've encountered an error. Please try again soon."/>
+        <PageSkeleton/>
       </Content>
     );
-  }
-
-  // 判断是否存在数据，以便确定 ListingDetails 和 ListingBookings 组件的渲染；
+  } 
   const listing = data ? data.listing : null;
-  const listingBookings = {
-    total: 4,
-    result: [
-      {
-        id: "5daa530eefc64b001767247c",
-        tenant: {
-          id: "117422637055829818290",
-          name: "User X",
-          avatar:
-            "https://lh3.googleusercontent.com/a-/AAuE7mBL9NpzsFA6mGSC8xIIJfeK4oTeOJpYvL-gAyaB=s100",
-          __typename: "User"
-        },
-        checkIn: "2019-10-29",
-        checkOut: "2019-10-31",
-        __typename: "Booking"
-      },
-    ]
-  } as any;
+  const listingBookings = listing ? listing.bookings : null;
+  const clearBookingData = () => {
+    setModalVisible(false);
+    setCheckInDate(null);
+    setCheckOutDate(null);
+  };
+  // 刷新当前页面
+  const handleListingRefetch = async () => {
+    await refetch();
+  };
 
-  const listingDetailsElement = listing ? <ListingDetails listing={listing} /> : null;
+  const listingDetailsElement = listing ? <ListingDetails listing={listing}/> : null;
+  const listingBookingsElement = listingBookings ? <ListingBookings
+    listingBookings={listingBookings}
+    bookingsPage={bookingsPage}
+    limit={PAGE_LIMIT}
+    setBookingsPage={setBookingsPage}
+  /> : null;
+  const listingCreateBookingElement = listing ? (<ListingCreateBooking
+    viewer={viewer}
+    host={listing.host}
+    price={listing.price}
+    bookingsIndex={listing.bookingsIndex}
+    checkInDate={checkInDate}
+    checkOutDate={checkOutDate}
+    setCheckInDate={setCheckInDate}
+    setCheckOutDate={setCheckOutDate}
+    setModalVisible={setModalVisible}
+  />) : null;
+  const listingCreateBookingModalElement =
+    listing && checkInDate && checkOutDate ? (
+      <ListingCreateBookingModal
+        id={listing.id}
+        price={listing.price}
+        modalVisible={modalVisible}
+        checkInDate={checkInDate}
+        checkOutDate={checkOutDate}
+        setModalVisible={setModalVisible}
+        clearBookingData={clearBookingData}
+        handleListingRefetch={handleListingRefetch}
+      />
+    ) : null;
 
-  // 通过listing检查是否有价格存在
-  const listingCreateBookingElement = listing ? (
-    <ListingCreateBooking
-      price={listing.price}
-      checkInDate={checkInDate}
-      checkOutDate={checkOutDate}
-      setCheckInDate={setCheckInDate}
-      setCheckOutDate={setCheckOutDate}
-    />
-  ) : null;
-
-  // listingBookingsElement组件
-  const listingBookingsElement = listingBookings ? (
-    <ListingBookings
-      listingBookings={listingBookings}
-      bookingsPage={bookingsPage}
-      limit={PAGE_LIMIT}
-      setBookingsPage={setBookingsPage}
-    />
-  ) : null;
-
-  // TODO: Bookings的flex自适应布局
   return (
     <Content className="listings">
-      <Row gutter={24} justify="space-between">
+      <Row gutter={24} type="flex" justify="space-between">
         <Col xs={24} lg={14}>
           {listingDetailsElement}
           {listingBookingsElement}
@@ -106,6 +122,7 @@ export const Listing = ({ match }: RouteComponentProps<MatchParams>) => {
           {listingCreateBookingElement}
         </Col>
       </Row>
+      {listingCreateBookingModalElement}
     </Content>
   );
 };

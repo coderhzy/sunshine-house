@@ -20,6 +20,7 @@
     "react-dom": "^16.8.6",
     "react-router-dom": "^5.2.0",
     "react-scripts": "3.0.1",
+    "react-stripe-elements": "^6.1.2",
     "typescript": "3.5.3"
   },
   "scripts": {
@@ -46,5 +47,8 @@
     ]
   },
   "proxy": "http://localhost:9000",
-  "secure": false
+  "secure": false,
+  "devDependencies": {
+    "@types/react-stripe-elements": "^6.0.4"
+  }
 }
